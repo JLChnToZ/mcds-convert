@@ -1,0 +1,33 @@
+{
+  "name": "mcds-convert",
+  "version": "0.1.0",
+  "description": "Converts a single data file to zipped Minecraft datapack or reverse.",
+  "main": "./lib/index.js",
+  "author": "Jeremy Lam <jeremylam619@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JLChnToZ/mcds-convert.git"
+  },
+  "dependencies": {
+    "@types/js-yaml": "^3.12.2",
+    "@types/jszip": "^3.1.7",
+    "@types/node": "^13.7.2",
+    "@types/node-fetch": "^2.5.4",
+    "@types/yargs": "^15.0.3",
+    "js-yaml": "^3.13.1",
+    "jszip": "^3.2.2",
+    "node-fetch": "^2.6.0",
+    "tslib": "^1.10.0",
+    "yargs": "^15.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^3.7.5"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "bin": {
+    "mcds": "./lib/index.js"
+  }
+}
