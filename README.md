@@ -36,7 +36,8 @@ The structure of the data file looks like this (in JSON form, YAML is similar):
     // Receipes
   },
   "structures": {
-    // Structures (experimental)
+    // Structures (experimental), may be data: url or just a path (relative/absolute/local/remote all fine) link to the target NBT file
+    // In YAML can use binary tag to store the content as well.
   },
   "blocks": {
     // Tag Definitions for Blocks

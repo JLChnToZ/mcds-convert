@@ -1,31 +1,13 @@
 import Zip from 'jszip';
 import { load as fromYaml } from 'js-yaml';
-import fetch from 'node-fetch';
-import { dirname, extname, basename, join as joinPath, resolve } from 'path';
-import { readFile, writeFile } from 'fs';
-import { promisify } from 'util';
-
-const readFileAsync = promisify(readFile);
-const writeFileAsync = promisify(writeFile);
-
-const namespacedIdPattern = /^(\#?)([a-z0-9_-]+\:)?([a-z0-9_-]*)((?:\/[a-z0-9_-]+)*)$/;
-
-function namespacedIdToPath(nsid: string, type: string) {
-  const m = namespacedIdPattern.exec(nsid);
-  if(!m) throw new TypeError('Invalid Namespaced ID');
-  let path = 'data/';
-  path += m[2] ? m[2].substring(0, m[2].length - 1) : 'minecraft';
-  if(m[1]) path += '/tags';
-  path += `/${type}`;
-  if(m[3]) path += `/${m[3]}`;
-  if(m[4]) path += m[4];
-  return path;
-}
+import { dirname, extname, basename, resolve as resolvePath } from 'path';
+import { readFileAsync, namespacedIdToPath, writeFileAsync, resolveResource } from './utils';
 
 export async function pack(input: string, output?: string) {
   const originalDir = process.cwd();
+  input = resolvePath(input);
   process.chdir(dirname(input));
-  if(!output) output = joinPath(dirname(input), basename(input, extname(input)) + '.zip');
+  if(!output) output = resolvePath(basename(input, extname(input)) + '.zip');
   let isYaml = false;
   switch(extname(input).toLowerCase()) {
     case '.yml': case '.yaml':
@@ -46,7 +28,7 @@ export async function pack(input: string, output?: string) {
           const path = namespacedIdToPath(nsid, key);
           switch(key) {
             case 'structures':
-              zipFile.file(`${path}.nbt`, (await fetch(content[nsid])).buffer());
+              zipFile.file(`${path}.nbt`, await resolveResource(content[nsid]));
               break;
             case 'functions':
               if(nsid.charAt(0) !== '#') {
@@ -66,7 +48,7 @@ export async function pack(input: string, output?: string) {
       }
     }
   }
-  await writeFileAsync(resolve(originalDir, output), await zipFile.generateAsync({
+  await writeFileAsync(resolvePath(originalDir, output), await zipFile.generateAsync({
     type: 'nodebuffer',
     compression: 'DEFLATE',
   }));

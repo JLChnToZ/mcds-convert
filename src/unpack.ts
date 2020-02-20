@@ -1,31 +1,10 @@
 import Zip from 'jszip';
 import { dump as toYaml } from 'js-yaml';
-import { dirname, extname, basename, join as joinPath } from 'path';
-import { readFile, writeFile } from 'fs';
-import { promisify } from 'util';
-
-const readFileAsync = promisify(readFile);
-const writeFileAsync = promisify(writeFile);
-
-const extMatcher = /\.[a-z0-9]+$/;
-
-function pathToNamespaceID(pathSplitted: string[]) {
-  let nsid = pathSplitted[1] === 'minecraft' ? '' : `${pathSplitted[1]}:`;
-  let type = pathSplitted[2];
-  if(type === 'tags') {
-    if(pathSplitted.length < 5)
-      return;
-    nsid = '#' + nsid + pathSplitted.slice(4).join('/');
-    type = pathSplitted[3];
-  } else
-    nsid += pathSplitted.slice(3).join('/');
-  nsid = nsid.replace(extMatcher, '');
-  if(nsid[nsid.length - 1] === ':')
-    nsid = nsid.substring(0, nsid.length - 1);
-  return { type, nsid };
-}
+import { dirname, extname, basename, join as joinPath, resolve as resolvePath } from 'path';
+import { pathToNamespacedId, readFileAsync, writeFileAsync } from './utils';
 
 export async function unpack(input: string, output?: string) {
+  input = resolvePath(input);
   if(!output) output = joinPath(dirname(input), basename(input, extname(input)) + '.json');
   let isYaml = false;
   switch(extname(output).toLowerCase()) {
@@ -42,7 +21,7 @@ export async function unpack(input: string, output?: string) {
     if(splittedFile.length === 1 && fileName === 'pack.mcmeta')
       continue;
     if(splittedFile.length > 2 && splittedFile[0] === 'data') {
-      const nsidType = pathToNamespaceID(splittedFile);
+      const nsidType = pathToNamespacedId(splittedFile);
       if(!nsidType) continue;
       const { nsid, type } = nsidType;
       if(!type || !nsid)
@@ -53,7 +32,9 @@ export async function unpack(input: string, output?: string) {
       switch(type) {
         case 'structures':
           if(ext === '.nbt')
-            result[type][nsid] = `data:application/octet-stream;base64,${await zipFile.files[file].async('base64')}`;
+            result[type][nsid] = isYaml ?
+              await zipFile.files[file].async('nodebuffer') :
+              `data:application/x-minecraft-nbt;base64,${await zipFile.files[file].async('base64')}`;
           break;
         case 'functions':
           if(nsid[0] !== '#' && ext === '.mcfunction') {

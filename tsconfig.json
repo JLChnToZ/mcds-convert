@@ -10,7 +10,8 @@
     "typeRoots": ["node_modules/@types"],     /* List of folders to include type definitions from. */
     "types": ["node"],                        /* Type declaration files to be included in compilation. */
     "esModuleInterop": true,
-    "importHelpers": true
+    "importHelpers": true,
+    "sourceMap": true,
   },
   "include": [
     "./src/**/*"
