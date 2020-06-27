@@ -10,7 +10,6 @@
     "url": "https://github.com/JLChnToZ/mcds-convert.git"
   },
   "dependencies": {
-    "@types/iconv-lite": "^0",
     "@types/js-yaml": "^3",
     "@types/node": "^14",
     "@types/source-map-support": "latest",
@@ -18,12 +17,12 @@
     "iconv-lite": "^0",
     "js-yaml": "^3",
     "jszip": "^3",
-    "tslib": "^2"
+    "source-map-support": "latest",
+    "tslib": "^2",
+    "yargs": "^15"
   },
   "devDependencies": {
-    "source-map-support": "latest",
-    "typescript": "^3",
-    "yargs": "^15"
+    "typescript": "^3"
   },
   "scripts": {
     "build": "tsc",
