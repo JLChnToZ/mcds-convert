@@ -15,7 +15,7 @@ export async function pack(input: string, output?: string) {
       break;
   }
   const raw = await readFileAsync(input, 'utf8');
-  const data = isYaml ? fromYaml(raw) : JSON.parse(raw);
+  const data = isYaml ? fromYaml(raw, { filename: input }) : JSON.parse(raw);
   var zipFile = new Zip();
   zipFile.file('pack.mcmeta', JSON.stringify({ pack: data.pack }));
   for(const key of Object.keys(data)) {

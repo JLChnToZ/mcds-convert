@@ -3,7 +3,7 @@ import yargs from 'yargs';
 import { pack } from './pack';
 import { unpack } from './unpack';
 
-if(require.main === module)
+if(require.main === module) {
   yargs
   .command(
     ['pack <file> [out]', 'p'],
@@ -16,7 +16,7 @@ if(require.main === module)
       describe: 'Output file',
       type: 'string',
     }),
-    argv => pack(argv.file, argv.out),
+    argv => pack(argv.file, argv.out).catch(logError),
   )
   .command(
     ['unpack <file> [out]', 'u'],
@@ -29,11 +29,17 @@ if(require.main === module)
       describe: 'Output file',
       type: 'string',
     }),
-    argv => unpack(argv.file, argv.out),
+    argv => unpack(argv.file, argv.out).catch(logError),
   )
   .demandCommand(1)
   .help()
   .parse();
+
+  function logError(error?: any) {
+    console.error('An error occured!');
+    console.error(error && typeof error === 'object' ? error.stack || error : error);
+  }
+}
 
 export { pack } from './pack';
 export { unpack } from './unpack';
