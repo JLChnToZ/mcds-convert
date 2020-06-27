@@ -14,7 +14,9 @@ export async function unpack(input: string, output?: string) {
   }
   const zipFile = await Zip.loadAsync(await readFileAsync(input));
   const result: any = {};
-  Object.assign(result, JSON.parse(await zipFile.file('pack.mcmeta').async('string')));
+  const raw = await zipFile.file('pack.mcmeta')?.async('string');
+  if(raw == null) throw new Error('`pack.mcmeta` does not exists at root.');
+  Object.assign(result, JSON.parse(raw));
   for(const file of Object.keys(zipFile.files)) {
     const splittedFile = file.split('/');
     const fileName = splittedFile[splittedFile.length - 1];

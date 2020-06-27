@@ -10,27 +10,26 @@
     "url": "https://github.com/JLChnToZ/mcds-convert.git"
   },
   "dependencies": {
-    "@types/iconv-lite": "^0.0.1",
-    "@types/js-yaml": "^3.12.2",
-    "@types/jszip": "^3.1.7",
-    "@types/node": "^13.7.2",
-    "@types/source-map-support": "^0.5.1",
-    "@types/yargs": "^15.0.3",
-    "iconv-lite": "^0.5.1",
-    "js-yaml": "^3.13.1",
-    "jszip": "^3.2.2",
-    "tslib": "^1.10.0"
+    "@types/iconv-lite": "^0",
+    "@types/js-yaml": "^3",
+    "@types/node": "^14",
+    "@types/source-map-support": "latest",
+    "@types/yargs": "^15",
+    "iconv-lite": "^0",
+    "js-yaml": "^3",
+    "jszip": "^3",
+    "tslib": "^2"
   },
   "devDependencies": {
-    "source-map-support": "^0.5.16",
-    "typescript": "^3.7.5",
-    "yargs": "^15.1.0"
+    "source-map-support": "latest",
+    "typescript": "^3",
+    "yargs": "^15"
   },
   "scripts": {
     "build": "tsc",
-    "start": "node ."
+    "start": "node lib/cli"
   },
   "bin": {
-    "mcds": "./bin/cli"
+    "mcds": "./bin/cli.js"
   }
 }
