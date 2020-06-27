@@ -31,6 +31,6 @@
     "start": "node ."
   },
   "bin": {
-    "mcds": "node ."
+    "mcds": "./lib/"
   }
 }
