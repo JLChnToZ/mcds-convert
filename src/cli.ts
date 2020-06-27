@@ -26,8 +26,20 @@ yargs
   }).positional('out', {
     describe: 'Output file',
     type: 'string',
+  }).options({
+    linemax: {
+      alias: 'l',
+      describe: 'Max characters per line',
+      type: 'number',
+    },
+    snbt: {
+      alias: 's',
+      describe: 'Extract NBT binaries to SNBT',
+      default: false,
+      type: 'boolean',
+    },
   }),
-  argv => unpack(argv.file, argv.out).catch(logError),
+  argv => unpack(argv.file, argv.out, argv.linemax, argv.snbt).catch(logError),
 )
 .demandCommand(1)
 .help()

@@ -1,5 +1,7 @@
 import { readFile, writeFile, exists } from 'fs';
+import { gunzip, gzip, InputType } from 'zlib';
 import { resolve as resolvePath } from 'path';
+import { stringify as toSNBT, parse as fromSNBT, encode as toNBT, decode as fromNBT } from 'nbt-ts';
 import { promisify } from 'util';
 import { encode as encodeString } from 'iconv-lite';
 import { get as httpGet, IncomingMessage } from 'http';
@@ -9,6 +11,8 @@ import { URL } from 'url';
 export const readFileAsync = promisify(readFile);
 export const writeFileAsync = promisify(writeFile);
 export const existsAsync = promisify(exists);
+export const gunzipAsync = promisify<InputType, Buffer>(gunzip);
+export const gzipAsync = promisify<InputType, Buffer>(gzip);
 
 const defaultNamespace = 'minecraft';
 const extPattern = /\.[a-z0-9]+$/;
@@ -115,12 +119,29 @@ export function streamToBuffer(stream: NodeJS.ReadableStream) {
   return streamToArray<Buffer>(stream).then(Buffer.concat);
 }
 
+export function isGZip(data: Buffer) {
+  return data != null &&
+    data.length >= 3 &&
+    data[0] === 0x1F &&
+    data[1] === 0x8B &&
+    data[2] === 0x08;
+}
+
+export async function nbtToSnbt(data: Buffer | PromiseLike<Buffer>, breakLength?: number, quote: 'single' | 'double' = 'single') {
+  const dataBuf = await data;
+  const rawData = isGZip(dataBuf) ? await gunzipAsync(dataBuf) : dataBuf;
+  return toSNBT(fromNBT(rawData).value!, { pretty: breakLength != null, breakLength, quote });
+}
+
 export function resolveResource(data: string | URL | Buffer) {
   if(Buffer.isBuffer(data))
     return Promise.resolve(data);
   try {
+    if(typeof data === 'string' && /^[\s\r\n]*\{/.test(data))
+      return gzipAsync(toNBT('root', fromSNBT(data)));
+  } catch {}
+  try {
     return fetch(data);
-  } catch {
-    return Promise.resolve(Buffer.from(data));
-  }
+  } catch {}
+  return Promise.resolve(Buffer.from(data));
 }

@@ -1,9 +1,9 @@
 import Zip from 'jszip';
 import { dump as toYaml } from 'js-yaml';
 import { dirname, extname, basename, join as joinPath, resolve as resolvePath } from 'path';
-import { pathToNamespacedId, readFileAsync, writeFileAsync } from './utils';
+import { pathToNamespacedId, readFileAsync, writeFileAsync, nbtToSnbt } from './utils';
 
-export async function unpack(input: string, output?: string) {
+export async function unpack(input: string, output?: string, lineWidth?: number, snbt?: boolean) {
   input = resolvePath(input);
   if(!output) output = joinPath(dirname(input), basename(input, extname(input)) + '.json');
   let isYaml = false;
@@ -33,10 +33,17 @@ export async function unpack(input: string, output?: string) {
       const ext = extname(fileName);
       switch(type) {
         case 'structures':
-          if(ext === '.nbt')
-            result[type][nsid] = isYaml ?
-              await zipFile.files[file].async('nodebuffer') :
-              `data:application/x-minecraft-nbt;base64,${await zipFile.files[file].async('base64')}`;
+          if(ext === '.nbt') {
+            if(snbt)
+              result[type][nsid] = await nbtToSnbt(
+                zipFile.files[file].async('nodebuffer'),
+                isYaml && lineWidth != null ? lineWidth - 20 : undefined,
+              );
+            else
+              result[type][nsid] = isYaml ?
+                await zipFile.files[file].async('nodebuffer') :
+                `data:application/x-minecraft-nbt;base64,${await zipFile.files[file].async('base64')}`;
+          }
           break;
         case 'functions':
           if(nsid[0] !== '#' && ext === '.mcfunction') {
@@ -51,5 +58,5 @@ export async function unpack(input: string, output?: string) {
       }
     }
   }
-  await writeFileAsync(output, isYaml ? toYaml(result) : JSON.stringify(result, null, 2));
+  await writeFileAsync(output, isYaml ? toYaml(result, { lineWidth, condenseFlow: lineWidth == null }) : JSON.stringify(result, null, 2));
 }

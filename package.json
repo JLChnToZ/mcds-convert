@@ -17,6 +17,7 @@
     "iconv-lite": "^0",
     "js-yaml": "^3",
     "jszip": "^3",
+    "nbt-ts": "^1",
     "source-map-support": "latest",
     "tslib": "^2",
     "yargs": "^15"
