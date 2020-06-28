@@ -13,10 +13,14 @@ The structure of the data file looks like this (in JSON form, YAML is similar):
   },
   "functions": {
     "namespace:path/to/function": [
-      // the content of .mcfunction file here, it can be array of string (will be join by line breaks) or string data.
+      // the content of .mcfunction file here.
+      // It can be array of string (one command per entry),
+      // or plain string contents.
     ],
+    // Any path starts with # indicates this is a tag definition
+    // (As in references of commands)
     "#namespace:path/to/sometag": {
-      "value": [
+      "values": [
         // Tags can be here too
       ]
     }
@@ -36,8 +40,11 @@ The structure of the data file looks like this (in JSON form, YAML is similar):
     // Receipes
   },
   "structures": {
-    // Structures (experimental), may be data: SNBT or url or just a path (relative/absolute/local/remote all fine) link to the target NBT file
-    // In YAML can use binary tag to store the content as well.
+    // Structures (experimental), may be one of following:
+    // - URL (can be in file/http(s)/data URI scheme)
+    // - File path (can be absolute/relative/local/remote)
+    // - Stringified NBT string (The format used in commands)
+    // - Raw binary tag (YAML only)
   },
   "dimension_type": {
     // Dimension types

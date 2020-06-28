@@ -1,6 +1,8 @@
 import 'source-map-support/register';
 import yargs from 'yargs';
-import { pack, unpack } from './';
+import { packToFile } from './pack';
+import { unpackToFile } from './unpack';
+import { logError } from './utils';
 
 yargs
 .command(
@@ -13,8 +15,19 @@ yargs
   }).positional('out', {
     describe: 'Output file',
     type: 'string',
+  }).options({
+    watch: {
+      alias: 'w',
+      describe: 'Watch file changes',
+      type: 'boolean',
+      default: false,
+    },
   }),
-  argv => pack(argv.file, argv.out).catch(logError),
+  argv => packToFile({
+    input: argv.file,
+    output: argv.out,
+    watch: argv.watch,
+  }).catch(logError),
 )
 .command(
   ['unpack <file> [out]', 'u'],
@@ -38,14 +51,28 @@ yargs
       default: false,
       type: 'boolean',
     },
+    nbt: {
+      alias: 'n',
+      describe: 'Extract NBT files',
+      default: true,
+      type: 'boolean',
+    },
+    pretty: {
+      alias: 'p',
+      describe: 'Prettify output',
+      default: true,
+      type: 'boolean',
+    },
   }),
-  argv => unpack(argv.file, argv.out, argv.linemax, argv.snbt).catch(logError),
+  argv => unpackToFile({
+    input: argv.file,
+    output: argv.out,
+    lineWidth: argv.linemax,
+    nbt: argv.nbt,
+    snbt: argv.snbt,
+    pretty: argv.pretty,
+  }).catch(logError),
 )
 .demandCommand(1)
 .help()
 .parse();
-
-function logError(error?: any) {
-  console.error('An error occured!');
-  console.error(error && typeof error === 'object' ? error.stack || error : error);
-}

@@ -1,2 +1,2 @@
 export { pack } from './pack';
-export { unpack } from './unpack';
+export { unpack, unpackToFile, UnpackOptions, UnpackToFileOptions } from './unpack';

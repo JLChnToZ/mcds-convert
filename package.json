@@ -10,10 +10,12 @@
     "url": "https://github.com/JLChnToZ/mcds-convert.git"
   },
   "dependencies": {
+    "@types/chokidar": "^2.1.3",
     "@types/js-yaml": "^3",
     "@types/node": "^14",
     "@types/source-map-support": "latest",
     "@types/yargs": "^15",
+    "chokidar": "^3.4.0",
     "iconv-lite": "^0",
     "js-yaml": "^3",
     "jszip": "^3",

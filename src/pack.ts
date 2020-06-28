@@ -1,21 +1,31 @@
 import Zip from 'jszip';
+import { watch, FSWatcher } from 'chokidar';
 import { load as fromYaml } from 'js-yaml';
 import { dirname, extname, basename, resolve as resolvePath } from 'path';
-import { readFileAsync, namespacedIdToPath, writeFileAsync, resolveResource } from './utils';
+import { readFileAsync, namespacedIdToPath, writeFileAsync, resolveResource, logError, debounce, queuePromise } from './utils';
+import { URL, fileURLToPath } from 'url';
 
-export async function pack(input: string, output?: string) {
-  const originalDir = process.cwd();
-  input = resolvePath(input);
-  process.chdir(dirname(input));
-  if(!output) output = resolvePath(basename(input, extname(input)) + '.zip');
-  let isYaml = false;
-  switch(extname(input).toLowerCase()) {
-    case '.yml': case '.yaml':
-      isYaml = true;
-      break;
-  }
-  const raw = await readFileAsync(input, 'utf8');
-  const data = isYaml ? fromYaml(raw, { filename: input }) : JSON.parse(raw);
+export interface PackOptions {
+  yaml?: boolean;
+  input?: string;
+  base?: string;
+}
+
+export interface PackToFileOptions extends PackOptions {
+  input: string;
+  output?: string;
+  watch?: boolean;
+}
+
+interface PackToFileInternalOptions extends PackToFileOptions {
+  base: string;
+  output: string;
+  watcher?: FSWatcher;
+  urlDiscoverCb?: (url: URL) => void;
+}
+
+export async function pack(raw: string, options: PackOptions) {
+  const data = options.yaml ? fromYaml(raw, { filename: options.input }) : JSON.parse(raw);
   var zipFile = new Zip();
   zipFile.file('pack.mcmeta', JSON.stringify({ pack: data.pack }));
   for(const key of Object.keys(data)) {
@@ -28,7 +38,11 @@ export async function pack(input: string, output?: string) {
           const path = namespacedIdToPath(nsid, key);
           switch(key) {
             case 'structures':
-              zipFile.file(`${path}.nbt`, await resolveResource(content[nsid]));
+              zipFile.file(`${path}.nbt`, await resolveResource(
+                content[nsid],
+                options.base,
+                (options as PackToFileInternalOptions).urlDiscoverCb),
+              );
               break;
             case 'functions':
               if(nsid.charAt(0) !== '#') {
@@ -48,8 +62,43 @@ export async function pack(input: string, output?: string) {
       }
     }
   }
-  await writeFileAsync(resolvePath(originalDir, output), await zipFile.generateAsync({
+  return zipFile.generateAsync({
     type: 'nodebuffer',
     compression: 'DEFLATE',
-  }));
+  });
+}
+
+export async function packToFile(options: PackToFileOptions) {
+  const opt = Object.assign({}, options) as PackToFileInternalOptions;
+  opt.input = options.base ? resolvePath(options.base, options.input) : resolvePath(options.input);
+  if(!options.base) opt.base = dirname(opt.input);
+  const inputExt = extname(opt.input);
+  opt.output = resolvePath(options.output || basename(opt.input, inputExt) + '.zip');
+  switch(inputExt.toLowerCase()) {
+    case '.yml': case '.yaml':
+      opt.yaml = true;
+      break;
+    default:
+      opt.yaml = false;
+      break;
+  }
+  if(options.watch) {
+    console.error('Watch mode enabled!');
+    opt.watcher = watch(opt.input, {
+      ignoreInitial: true,
+    }).on('change', debounce(queuePromise(
+      () => packToFileExec(opt).catch(logError),
+    ), 1000));
+    opt.urlDiscoverCb = url => {
+      if(url.protocol === 'file')
+        opt.watcher?.add(fileURLToPath(url));
+    };
+  }
+  await packToFileExec(opt);
+}
+
+async function packToFileExec(options: PackToFileInternalOptions) {
+  console.error(`Start parse ${options.input}.`);
+  await writeFileAsync(options.output, await pack(await readFileAsync(options.input, 'utf8'), options));
+  console.error(`Successfully write into ${options.output}.`);
 }

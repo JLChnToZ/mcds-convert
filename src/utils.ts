@@ -7,6 +7,7 @@ import { encode as encodeString } from 'iconv-lite';
 import { get as httpGet, IncomingMessage } from 'http';
 import { get as httpsGet } from 'https';
 import { URL } from 'url';
+import { setTimeout } from 'timers';
 
 export const readFileAsync = promisify(readFile);
 export const writeFileAsync = promisify(writeFile);
@@ -54,10 +55,10 @@ export function namespacedIdToPath(nsid: string, type: string) {
   return path.toLowerCase();
 }
 
-export function fileUrl(filePath: string) {
+export function fileUrl(filePath: string, base?: string) {
   if(typeof filePath !== 'string')
     throw new Error('Filepath should be string');
-  let pathName = resolvePath(filePath).replace(/\\/g, '/');
+  let pathName = (base ? resolvePath(base, filePath) : resolvePath(filePath)).replace(/\\/g, '/');
   if(pathName[0] !== '/')
     pathName = `/${pathName}`;
   return encodeURI(`file://${pathName}`);
@@ -74,29 +75,28 @@ export function decode(uri: string): MimeBuffer | null {
   });
 }
 
-export function fetch(url: string | URL): Promise<Buffer> {
+export function tryParseURL(url: string | URL, base?: string) {
+  if(!url) throw new TypeError('Url is not provided.');
+  return url instanceof URL ? url :
+    decode(url) || (
+      absolutePathPrefixPattern.test(url) ?
+        new URL(fileUrl(url)) :
+        new URL(url, fileUrl(base || process.cwd()))
+    );
+}
+
+export function fetch(url: URL): Promise<Buffer> {
   try {
-    if(!url) throw new TypeError('Url is not provided.');
-    let parsedUrl: URL;
-    if(typeof url === 'string') {
-      const data = decode(url);
-      if(data) return Promise.resolve(data);
-      if(absolutePathPrefixPattern.test(url))
-        parsedUrl = new URL(fileUrl(url));
-      else
-        parsedUrl = new URL(url, fileUrl(process.cwd()));
-    } else
-      parsedUrl = url;
-    switch(parsedUrl.protocol) {
+    switch(url.protocol) {
       case 'file:':
-        return readFileAsync(parsedUrl);
+        return readFileAsync(url);
       case 'http:':
         return new Promise<IncomingMessage>((resolve, reject) =>
-          httpGet(parsedUrl, resolve).on('error', reject),
+          httpGet(url, resolve).on('error', reject),
         ).then(streamToBuffer);
       case 'https:':
         return new Promise<IncomingMessage>((resolve, reject) =>
-          httpsGet(parsedUrl, resolve).on('error', reject),
+          httpsGet(url, resolve).on('error', reject),
         ).then(streamToBuffer);
       default:
         throw new TypeError('Unsupported protocol.');
@@ -127,13 +127,13 @@ export function isGZip(data: Buffer) {
     data[2] === 0x08;
 }
 
-export async function nbtToSnbt(data: Buffer | PromiseLike<Buffer>, breakLength?: number, quote: 'single' | 'double' = 'single') {
+export async function nbtToSnbt(data: Buffer | PromiseLike<Buffer>, pretty?: boolean, breakLength?: number, quote: 'single' | 'double' = 'single') {
   const dataBuf = await data;
   const rawData = isGZip(dataBuf) ? await gunzipAsync(dataBuf) : dataBuf;
-  return toSNBT(fromNBT(rawData).value!, { pretty: breakLength != null, breakLength, quote });
+  return toSNBT(fromNBT(rawData).value!, { pretty, breakLength, quote });
 }
 
-export function resolveResource(data: string | URL | Buffer) {
+export function resolveResource(data: string | URL | Buffer, base?: string, onPathDiscovered?: (path: URL) => void) {
   if(Buffer.isBuffer(data))
     return Promise.resolve(data);
   try {
@@ -141,7 +141,35 @@ export function resolveResource(data: string | URL | Buffer) {
       return gzipAsync(toNBT('root', fromSNBT(data)));
   } catch {}
   try {
-    return fetch(data);
+    const result = tryParseURL(data, base);
+    if(!(result instanceof URL))
+      return Promise.resolve(result);
+    onPathDiscovered?.(result);
+    return fetch(result);
   } catch {}
   return Promise.resolve(Buffer.from(data));
+}
+
+export function logError(error?: any) {
+  console.error('An error occured!');
+  console.error(error && typeof error === 'object' ? error.stack || error : error);
+}
+
+export function debounce<A extends any[]>(fn: (...args: A) => void, delay: number): (...args: A) => void {
+  let timer: NodeJS.Timeout | undefined;
+  function callback(thisArg: any, args: A) {
+    timer = undefined;
+    fn.apply(thisArg, args);
+  }
+  return function(this: any, ...args: any[]) {
+    if(timer) clearTimeout(timer);
+    timer = setTimeout(callback, delay, this, args).unref();
+  }
+}
+export function queuePromise<A extends any[], R>(fn: (...args: A) => PromiseLike<R>): (...args: A) => Promise<R> {
+  let lastResult: Promise<any> = Promise.resolve();
+  return function(this: any, ...args: A) {
+    const callback = () => fn.apply(this, args);
+    return lastResult = lastResult.then(callback, callback);
+  }
 }

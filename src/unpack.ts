@@ -1,18 +1,24 @@
 import Zip from 'jszip';
 import { dump as toYaml } from 'js-yaml';
 import { dirname, extname, basename, join as joinPath, resolve as resolvePath } from 'path';
-import { pathToNamespacedId, readFileAsync, writeFileAsync, nbtToSnbt } from './utils';
+import { createReadStream } from 'fs';
+import { pathToNamespacedId, writeFileAsync, nbtToSnbt, readFileAsync } from './utils';
 
-export async function unpack(input: string, output?: string, lineWidth?: number, snbt?: boolean) {
-  input = resolvePath(input);
-  if(!output) output = joinPath(dirname(input), basename(input, extname(input)) + '.json');
-  let isYaml = false;
-  switch(extname(output).toLowerCase()) {
-    case '.yml': case '.yaml':
-      isYaml = true;
-      break;
-  }
-  const zipFile = await Zip.loadAsync(await readFileAsync(input));
+export interface UnpackOptions {
+  yaml?: boolean;
+  lineWidth?: number;
+  nbt?: boolean;
+  snbt?: boolean;
+  pretty?: boolean;
+}
+
+export interface UnpackToFileOptions extends UnpackOptions {
+  input: string;
+  output?: string;
+}
+
+export async function unpack(inputData: Buffer, options: UnpackOptions) {
+  const zipFile = await Zip.loadAsync(inputData);
   const result: any = {};
   const raw = await zipFile.file('pack.mcmeta')?.async('string');
   if(raw == null) throw new Error('`pack.mcmeta` does not exists at root.');
@@ -33,14 +39,15 @@ export async function unpack(input: string, output?: string, lineWidth?: number,
       const ext = extname(fileName);
       switch(type) {
         case 'structures':
-          if(ext === '.nbt') {
-            if(snbt)
+          if(ext === '.nbt' && options.nbt) {
+            if(options.snbt)
               result[type][nsid] = await nbtToSnbt(
                 zipFile.files[file].async('nodebuffer'),
-                isYaml && lineWidth != null ? lineWidth - 20 : undefined,
+                options.pretty,
+                options.yaml && options.lineWidth != null ? options.lineWidth - 20 : undefined,
               );
             else
-              result[type][nsid] = isYaml ?
+              result[type][nsid] = options.yaml ?
                 await zipFile.files[file].async('nodebuffer') :
                 `data:application/x-minecraft-nbt;base64,${await zipFile.files[file].async('base64')}`;
           }
@@ -48,7 +55,7 @@ export async function unpack(input: string, output?: string, lineWidth?: number,
         case 'functions':
           if(nsid[0] !== '#' && ext === '.mcfunction') {
             result[type][nsid] = await zipFile.files[file].async('string');
-            if(!isYaml) result[type][nsid] = result[type][nsid].split(/[\r\n]+/);
+            if(!options.yaml) result[type][nsid] = result[type][nsid].split(/[\r\n]+/);
             break;
           }
         default:
@@ -58,5 +65,23 @@ export async function unpack(input: string, output?: string, lineWidth?: number,
       }
     }
   }
-  await writeFileAsync(output, isYaml ? toYaml(result, { lineWidth, condenseFlow: lineWidth == null }) : JSON.stringify(result, null, 2));
+  return options.yaml ? toYaml(result, {
+    lineWidth: options.lineWidth,
+    condenseFlow: !options.pretty,
+  }) : JSON.stringify(result, null, options.pretty ? 2 : 0);
+}
+
+export async function unpackToFile(options: UnpackToFileOptions) {
+  const opt = Object.assign({}, options);
+  opt.input = resolvePath(opt.input);
+  opt.output = options.output || joinPath(dirname(opt.input), basename(opt.input, extname(opt.input)) + (opt.yaml === false ? '.json' : '.yml'));
+  if(options.yaml == null)
+    switch(extname(opt.output).toLowerCase()) {
+      case '.yml': case '.yaml':
+        opt.yaml = true;
+        break;
+    }
+  console.error(`Start parse ${opt.input}.`);
+  await writeFileAsync(opt.output, await unpack(await readFileAsync(opt.input), opt));
+  console.error(`Successfully write into ${opt.output}.`);
 }
