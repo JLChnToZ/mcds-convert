@@ -1,6 +1,6 @@
 {
   "name": "mcds-convert",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Converts a single data file to zipped Minecraft datapack or reverse.",
   "main": "./lib/index.js",
   "author": "Jeremy Lam <jeremylam619@gmail.com>",
