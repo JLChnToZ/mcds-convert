@@ -1,8 +1,8 @@
 import Zip from 'jszip';
 import { dump as toYaml } from 'js-yaml';
 import { dirname, extname, basename, join as joinPath, resolve as resolvePath } from 'path';
-import { createReadStream } from 'fs';
-import { pathToNamespacedId, writeFileAsync, nbtToSnbt, readFileAsync } from './utils';
+import { pathToNamespacedId, writeFileAsync, nbtToSnbt, readFileAsync, resolveTo } from './utils';
+import JSZip from 'jszip';
 
 export interface UnpackOptions {
   yaml?: boolean;
@@ -23,6 +23,7 @@ export async function unpack(inputData: Buffer, options: UnpackOptions) {
   const raw = await zipFile.file('pack.mcmeta')?.async('string');
   if(raw == null) throw new Error('`pack.mcmeta` does not exists at root.');
   Object.assign(result, JSON.parse(raw));
+  const co: Promise<any>[] = [];
   for(const file of Object.keys(zipFile.files)) {
     const splittedFile = file.split('/');
     const fileName = splittedFile[splittedFile.length - 1];
@@ -39,36 +40,47 @@ export async function unpack(inputData: Buffer, options: UnpackOptions) {
       const ext = extname(fileName);
       switch(type) {
         case 'structures':
-          if(ext === '.nbt' && options.nbt) {
-            if(options.snbt)
-              result[type][nsid] = await nbtToSnbt(
-                zipFile.files[file].async('nodebuffer'),
-                options.pretty,
-                options.yaml && options.lineWidth != null ? options.lineWidth - 20 : undefined,
-              );
-            else
-              result[type][nsid] = options.yaml ?
-                await zipFile.files[file].async('nodebuffer') :
-                `data:application/x-minecraft-nbt;base64,${await zipFile.files[file].async('base64')}`;
-          }
+          if(ext === '.nbt' && options.nbt)
+            co.push(resolveTo(unpackNBT(zipFile, file, options), result[type], nsid));
           break;
         case 'functions':
           if(nsid[0] !== '#' && ext === '.mcfunction') {
-            result[type][nsid] = await zipFile.files[file].async('string');
-            if(!options.yaml) result[type][nsid] = result[type][nsid].split(/[\r\n]+/);
+            co.push(resolveTo(unpackMCFunction(zipFile, file, options), result[type], nsid));
             break;
           }
         default:
           if(ext === '.json')
-            result[type][nsid] = JSON.parse(await zipFile.files[file].async('string'));
+            co.push(resolveTo(unpackJSON(zipFile, file), result[type], nsid));
           break;
       }
     }
   }
+  await Promise.all(co);
   return options.yaml ? toYaml(result, {
     lineWidth: options.lineWidth,
     condenseFlow: !options.pretty,
   }) : JSON.stringify(result, null, options.pretty ? 2 : 0);
+}
+
+async function unpackNBT(zipFile: JSZip, file: string, options: UnpackOptions) {
+  return options.snbt ?
+    nbtToSnbt(
+      zipFile.files[file].async('nodebuffer'),
+      options.pretty,
+      options.yaml && options.lineWidth != null ? options.lineWidth - 20 : undefined,
+    ) :
+  options.yaml ?
+    zipFile.files[file].async('nodebuffer') :
+  `data:application/x-minecraft-nbt;base64,${await zipFile.files[file].async('base64')}`;
+}
+
+async function unpackMCFunction(zipFile: JSZip, file: string, options: UnpackOptions) {
+  const result = await zipFile.files[file].async('string');
+  return options.yaml ? result : result.split(/[\r\n]+/);
+}
+
+async function unpackJSON(zipFile: JSZip, file: string) {
+  return JSON.parse(await zipFile.files[file].async('string'));
 }
 
 export async function unpackToFile(options: UnpackToFileOptions) {

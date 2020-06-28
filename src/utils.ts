@@ -147,7 +147,11 @@ export function resolveResource(data: string | URL | Buffer, base?: string, onPa
     onPathDiscovered?.(result);
     return fetch(result);
   } catch {}
-  return Promise.resolve(Buffer.from(data));
+  try {
+    return Promise.resolve(Buffer.from(data));
+  } catch(e) {
+    return Promise.reject(e);
+  }
 }
 
 export function logError(error?: any) {
@@ -172,4 +176,8 @@ export function queuePromise<A extends any[], R>(fn: (...args: A) => PromiseLike
     const callback = () => fn.apply(this, args);
     return lastResult = lastResult.then(callback, callback);
   }
+}
+
+export async function resolveTo<T, K extends keyof T>(src: PromiseLike<T[K]> | T[K], target: T, key: K) {
+  target[key] = await src; 
 }

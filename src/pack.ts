@@ -38,11 +38,10 @@ export async function pack(raw: string, options: PackOptions) {
           const path = namespacedIdToPath(nsid, key);
           switch(key) {
             case 'structures':
-              zipFile.file(`${path}.nbt`, await resolveResource(
-                content[nsid],
-                options.base,
-                (options as PackToFileInternalOptions).urlDiscoverCb),
-              );
+              zipFile.file(`${path}.nbt`, resolveResource(
+                content[nsid], options.base,
+                (options as PackToFileInternalOptions).urlDiscoverCb,
+              ));
               break;
             case 'functions':
               if(nsid.charAt(0) !== '#') {

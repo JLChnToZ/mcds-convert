@@ -27,3 +27,4 @@ export declare function resolveResource(data: string | URL | Buffer, base?: stri
 export declare function logError(error?: any): void;
 export declare function debounce<A extends any[]>(fn: (...args: A) => void, delay: number): (...args: A) => void;
 export declare function queuePromise<A extends any[], R>(fn: (...args: A) => PromiseLike<R>): (...args: A) => Promise<R>;
+export declare function resolveTo<T, K extends keyof T>(src: PromiseLike<T[K]> | T[K], target: T, key: K): Promise<void>;
