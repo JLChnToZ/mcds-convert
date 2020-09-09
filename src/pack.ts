@@ -1,6 +1,7 @@
 import Zip from 'jszip';
 import { watch, FSWatcher } from 'chokidar';
 import { load as fromYaml } from 'js-yaml';
+import { resolveRefs } from 'json-refs';
 import { dirname, extname, basename, resolve as resolvePath } from 'path';
 import { readFileAsync, namespacedIdToPath, writeFileAsync, resolveResource, logError, debounce, queuePromise } from './utils';
 import { URL, fileURLToPath } from 'url';
@@ -25,7 +26,9 @@ interface PackToFileInternalOptions extends PackToFileOptions {
 }
 
 export async function pack(raw: string, options: PackOptions) {
-  const data = options.yaml ? fromYaml(raw, { filename: options.input }) : JSON.parse(raw);
+  const data = options.yaml ?
+    fromYaml(raw, { filename: options.input }) :
+    (await resolveRefs(JSON.parse(raw))).resolved;
   var zipFile = new Zip();
   zipFile.file('pack.mcmeta', JSON.stringify({ pack: data.pack }));
   for(const key of Object.keys(data)) {

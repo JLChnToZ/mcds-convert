@@ -47,10 +47,34 @@ The structure of the data file looks like this (in JSON form, YAML is similar):
     // - Raw binary tag (YAML only)
   },
   "dimension_type": {
-    // Dimension types
+    // Dimension types (>= 1.16.2)
   },
   "dimension": {
-    // Dimension data
+    // Dimension data (>= 1.16.2)
+  },
+  "worldgen/biome": {
+    // World Generator Specific Definitions (>= 1.16.2)
+  },
+  "worldgen/configured_carver": {
+    // World Generator Specific Definitions (>= 1.16.2)
+  },
+  "worldgen/configured_feature": {
+    // World Generator Specific Definitions (>= 1.16.2)
+  },
+  "worldgen/configured_structure_feature": {
+    // World Generator Specific Definitions (>= 1.16.2)
+  },
+  "worldgen/configured_surface_builder": {
+    // World Generator Specific Definitions (>= 1.16.2)
+  },
+  "worldgen/noise_settings": {
+    // World Generator Specific Definitions (>= 1.16.2)
+  },
+  "worldgen/processor_list": {
+    // World Generator Specific Definitions (>= 1.16.2)
+  },
+  "worldgen/template_pool": {
+    // World Generator Specific Definitions (>= 1.16.2)
   },
   "blocks": {
     // Tag Definitions for Blocks
